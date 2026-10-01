@@ -21,16 +21,15 @@ public:
     void dump(std::ostream& os) override;
 
     // Extra helper functions for cart/menu behavior
-    void addProductToUserCart(const std::string& username, int hitIndex);
-    void viewCart(const std::string& username) const;
-    void buyCart(const std::string& username);
+    bool addProductToUserCart(const std::string& username, Product* product);
+    bool viewCart(const std::string& username) const;
+    bool buyCart(const std::string& username);
 
 private:
     std::vector<Product*> products_;
     std::map<std::string, User*> users_;
     std::map<std::string, std::set<Product*>> keywordIndex_;
     std::map<std::string, std::vector<Product*> > carts_;
-    std::vector<Product*> lastSearchResults_;
 };
 
 #endif

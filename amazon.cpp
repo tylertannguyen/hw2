@@ -101,32 +101,20 @@ int main(int argc, char* argv[])
                 done = true;
             }
 	    /* Add support for other commands here */
-            else if (cmd == "ADD") {
+            else if(cmd == "ADD") {
                 string username;
                 int hitIndex;
-
-                if(!(ss >> username >> hitIndex)) {
+                if(!(ss >> username >> hitIndex) || hitIndex < 1 || hitIndex > static_cast<int>(hits.size()) || !ds.addProductToUserCart(username, hits[hitIndex - 1])) {
                     cout << "Invalid request" << endl;
-                }
-                else {
-                    if(hitIndex < 0 || hitIndex >= (int)hits.size()) {
-                        cout << "Invalid request" << endl;
-                    }
-                    else {
-                        ds.addProductToUserCart(username, hitIndex);
-                    }
-                }
             }
-            else if (cmd == "VIEWCART") {
-                string username;
+        }
+            else if(cmd == "VIEWCART") {
+         string username;
 
-                if(!(ss >> username)) {
-                    cout << "Invalid username" << endl;
-                }
-                else {
-                    ds.viewCart(username);
-                }
-            }
+    if(!(ss >> username) || !ds.viewCart(username)) {
+        cout << "Invalid username" << endl;
+    }
+}
             else if (cmd == "BUYCART") {
                 string username;
 

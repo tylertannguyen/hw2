@@ -20,7 +20,7 @@ std::set<std::string> parseStringToWords(string rawWords)
     // Adds a separator so the last word get processed by the loop.
     rawWords += ' '; 
 
-    for(int i = 0; i < rawWords.length(); i++) {
+    for(std::string::size_type i = 0; i < rawWords.size(); ++i) {
         // Get the current character
         char c = rawWords[i];
         // A space or punctuation character indicates the end of a word. 

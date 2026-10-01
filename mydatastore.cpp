@@ -11,189 +11,217 @@ using namespace std;
 // Constructor
 MyDataStore::MyDataStore()
 {
-    // starts empty
+    // All containers start empty
 }
-
 // Destructor
 MyDataStore::~MyDataStore()
 {
-    for(size_t i = 0; i < products_.size(); i++) {
+    // Delete every product owned by the data store
+    for(size_t i = 0; i < products_.size(); ++i) {
         delete products_[i];
     }
-
-    for(map<string, User*>::iterator it = users_.begin(); it != users_.end(); ++it) {
+    // Delete every user owned by the data store
+    for(map<string, User*>::iterator it = users_.begin();
+        it != users_.end(); ++it) {
         delete it->second;
     }
 }
-
 // Adds a product to the data store
 void MyDataStore::addProduct(Product* p)
 {
-    // Check for null pointer
+    // Check for a null product pointer
     if(p == NULL) {
         return;
     }
-    // Add product to products_ vector
+    // Store the product pointer
     products_.push_back(p);
-    // Add product to keywordIndex_ map
-    std::set<std::string> keywords = p->keywords();
-    // For each keyword, add the product to the set of products 
-    for(std::set<std::string>::iterator it = keywords.begin(); it != keywords.end(); ++it) {
-        keywordIndex_[*it].insert(p);
+    // Get all searchable keywords belonging to the product
+    set<string> keywords = p->keywords();
+    // Add the product to the index for each of its keywords
+    for(set<string>::iterator it = keywords.begin();
+        it != keywords.end(); ++it) {
+        // Store every keyword in lowercase for case-insensitive searching
+        string normalizedKeyword = convToLower(*it);
+        // Associate this product with the normalized keyword
+        keywordIndex_[normalizedKeyword].insert(p);
     }
 }
-
 // Adds a user to the data store
 void MyDataStore::addUser(User* u)
 {
-    // Check for null pointer
+    // Check for a null user pointer
     if(u == NULL) {
         return;
     }
-    // Add user to users_ map, using lowercase name as key
-    std::string normalizedName = convToLower(u->getName());
+    // Convert the username to lowercase for case-insensitive lookup
+    string normalizedName = convToLower(u->getName());
+    // Store the user using the normalized username as the key
     users_[normalizedName] = u;
 }
-
-// Performs a search of products whose keywords match the given "terms"
-std::vector<Product*> MyDataStore::search(std::vector<std::string>& terms, int type)
+// Performs a search for products matching the given terms
+vector<Product*> MyDataStore::search(vector<string>& terms, int type)
 {
-    std::vector<Product*> result;
-    // If no search terms, return empty result
+    // Store the final search results
+    vector<Product*> result;
+    // Return an empty result if no search terms were provided
     if(terms.empty()) {
         return result;
     }
-    // Use a set to hold the matching products
-    std::set<Product*> matches;
-    // For each search term, find the matching products and update the matches set
-    for(size_t i = 0; i < terms.size(); i++) {
+    // Store the products that match the processed search terms
+    set<Product*> matches;
+    // Track whether matches has been initialized with a keyword result
+    bool initialized = false;
+    // Process every search term
+    for(size_t i = 0; i < terms.size(); ++i) {
+        // Normalize the search term for case-insensitive lookup
         string term = convToLower(terms[i]);
-        // Find the set of products for this term
-        map<string, set<Product*>>::iterator found = keywordIndex_.find(term);
-        // If the term is not found, return empty result for AND search, or continue for OR search
+        // Look for the search term in the keyword index
+        map<string, set<Product*> >::iterator found =
+            keywordIndex_.find(term);
+        // Handle a keyword that does not exist in the index
         if(found == keywordIndex_.end()) {
-            // If AND search, return empty result
+            // An AND search fails if any search term has no matches
             if(type == 0) {
                 return result;
             }
-            // If OR search, continue to next term
-            else {
-                continue;
-            }
+            // An OR search can ignore a term that has no matches
+            continue;
         }
-        // Get the set of products for this term
-        std::set<Product*> currentMatches = found->second;
-        // If this is the first term, initialize matches to currentMatches
-        if(i == 0) {
+        // Copy the products associated with the current keyword
+        set<Product*> currentMatches = found->second;
+
+        // Initialize matches with the first keyword that was found
+        if(!initialized) {
             matches = currentMatches;
+            initialized = true;
         }
-        // If this is not the first term, update matches based on the search type
+        // Intersect the results when performing an AND search
         else if(type == 0) {
             matches = setIntersection(matches, currentMatches);
         }
-        // If this is not the first term and type is OR, update matches to be the union of matches and currentMatches
+        // Combine the results when performing an OR search
         else {
             matches = setUnion(matches, currentMatches);
         }
     }
-    // Convert the set of matches to a vector for the result
-    for(std::set<Product*>::iterator it = matches.begin(); it != matches.end(); ++it) {
+    // Convert the set of matching products into a vector
+    for(set<Product*>::iterator it = matches.begin();
+        it != matches.end(); ++it) {
         result.push_back(*it);
     }
-    // Store the last search results 
-    lastSearchResults_ = result;
+
+    // Return the matching products
     return result;
 }
-
-// Reproduce the database file from the current Products and User values
-void MyDataStore::dump(std::ostream& os)
+// Reproduces the database using the current product and user values
+void MyDataStore::dump(ostream& os)
 {
-    // Dump products
-    for(size_t i = 0; i < products_.size(); i++) {
+    // Begin the products section
+    os << "<products>" << endl;
+    // Output every product in database format
+    for(std::vector<Product*>::size_type i = 0; i < products_.size(); ++i) {
         products_[i]->dump(os);
     }
-    // Dump users
-    for(map<string, User*>::iterator it = users_.begin(); it != users_.end(); ++it) {
+    // End the products section
+    os << "</products>" << endl;
+    // Begin the users section
+    os << "<users>" << endl;
+    // Output every user in database format
+    for(map<string, User*>::iterator it = users_.begin();
+        it != users_.end(); ++it) {
         it->second->dump(os);
     }
+    // End the users section
+    os << "</users>" << endl;
 }
-// Adds a product to the user's cart
-void MyDataStore::addProductToUserCart(const std::string& username, int hitIndex)
+// Adds a product to a user's cart
+bool MyDataStore::addProductToUserCart(
+    const string& username,
+    Product* product)
 {
-    // Normalize the username to lowercase for consistent lookup
-    std::string normalizedName = convToLower(username);
-    // Find the user
-    std::map<std::string, User*>::iterator userIt = users_.find(normalizedName);
-    // If the user is not found, return
-    if(userIt == users_.end()) {
-        return; 
+    // Convert the username to lowercase for case-insensitive lookup
+    string normalizedName = convToLower(username);
+    // Check whether the user exists and the product pointer is valid
+    if(users_.find(normalizedName) == users_.end() ||
+       product == NULL) {
+        return false;
     }
-    // make sure the hit index is valid
-    if(hitIndex < 0 || hitIndex >= (int)lastSearchResults_.size()) {
-        return; // invalid request; menu layer can print message
-    }
-    // add one product pointer to this user's cart
-    carts_[normalizedName].push_back(lastSearchResults_[hitIndex]);
+    // Add one occurrence of the product to the end of the user's cart
+    carts_[normalizedName].push_back(product);
+    // Report that the product was successfully added
+    return true;
 }
-// Displays the contents of the user's cart
-void MyDataStore::viewCart(const std::string& username) const
+// Displays the contents of a user's cart
+bool MyDataStore::viewCart(const string& username) const
 {
-    // Normalize the username to lowercase for consistent lookup
-    std::string normalizedName = convToLower(username);
-    // Find the user
-    std::map<std::string, User*>::const_iterator userIt = users_.find(normalizedName);
-    // If the user is not found, return
-    if(userIt == users_.end()) {
-        return; 
+    // Convert the username to lowercase for case-insensitive lookup
+    string normalizedName = convToLower(username);
+    // Check whether the user exists
+    if(users_.find(normalizedName) == users_.end()) {
+        return false;
     }
-    // Find the user's cart
-    std::map<std::string, std::vector<Product*> >::const_iterator cartIt = carts_.find(normalizedName);
-    // If the cart is not found, return
+    // Look for the user's cart
+    map<string, vector<Product*> >::const_iterator cartIt =
+        carts_.find(normalizedName);
+    // A valid user may not have created a cart yet
     if(cartIt == carts_.end()) {
-        return; // no cart yet, so nothing to print
+        return true;
     }
-    // Get the user's cart
-    const std::vector<Product*>& cart = cartIt->second;
-    // Print the contents of the cart
-    for(size_t i = 0; i < cart.size(); i++) {
-        std::cout << i + 1 << ": " << cart[i]->displayString() << std::endl;
+    // Get a reference to the user's cart
+    const vector<Product*>& cart = cartIt->second;
+    // Display the cart products in FIFO order
+    for(size_t i = 0; i < cart.size(); ++i) {
+        // Display an ascending item number and the product information
+        cout << i + 1 << ": "
+             << cart[i]->displayString() << endl;
     }
+    // Report that the username was valid
+    return true;
 }
-// Processes the purchase of all items in the user's cart
-void MyDataStore::buyCart(const std::string& username)
+// Attempts to purchase every product in a user's cart
+bool MyDataStore::buyCart(const string& username)
 {
-    // Normalize the username to lowercase for consistent lookup
-    std::string normalizedName = convToLower(username);
-    // Find the user
-    std::map<std::string, User*>::iterator userIt = users_.find(normalizedName);
-    // If the user is not found, return
+    // Convert the username to lowercase for case-insensitive lookup
+    string normalizedName = convToLower(username);
+    // Look for the user
+    map<string, User*>::iterator userIt =
+        users_.find(normalizedName);
+    // Report an invalid username
     if(userIt == users_.end()) {
-        return; // invalid username; menu layer can print message
+        return false;
     }
-    // Get the user object
+    // Look for the user's cart
+    map<string, vector<Product*> >::iterator cartIt =
+        carts_.find(normalizedName);
+    // A valid user with no cart has nothing to purchase
+    if(cartIt == carts_.end()) {
+        return true;
+    }
+    // Get the user who is purchasing the products
     User* user = userIt->second;
-    // Find the user's cart
-    std::map<std::string, std::vector<Product*> >::iterator cartIt = carts_.find(normalizedName);
-    // If the cart is not found, return
-    if(cartIt == carts_.end()) {
-        return;
-    }
-    // Get the user's cart
-    std::vector<Product*> cart = cartIt->second;
-    std::vector<Product*> remaining;
-    // Process each product in the cart
-    for(size_t i = 0; i < cart.size(); i++) {
-        Product* p = cart[i];
-        // Check if the product is in stock and if the user has enough balance
-        if(p->getQty() > 0 && user->getBalance() >= p->getPrice()) {
-            p->subtractQty(1);
-            user->deductAmount(p->getPrice());
+    // Get a reference to the user's current cart
+    vector<Product*>& cart = cartIt->second;
+    // Store products that cannot be purchased
+    vector<Product*> remaining;
+    // Process products in the order they were added
+    for(size_t i = 0; i < cart.size(); ++i) {
+        // Get the next product in the cart
+        Product* product = cart[i];
+        // Purchase the product if it is in stock and affordable
+        if(product->getQty() > 0 &&
+           user->getBalance() >= product->getPrice()) {
+            // Reduce the product quantity by one
+            product->subtractQty(1);
+            // Deduct the product price from the user's balance
+            user->deductAmount(product->getPrice());
         }
-        // If the product cannot be purchased, add it to the remaining vector
         else {
-            remaining.push_back(p);
+            // Keep products that could not be purchased in the cart
+            remaining.push_back(product);
         }
     }
-    // Update the user's cart to only contain the remaining products
-    carts_[normalizedName] = remaining;
+    // Replace the cart with the products that were not purchased
+    cart = remaining;
+    // Report that the username was valid
+    return true;
 }

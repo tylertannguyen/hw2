@@ -110,19 +110,15 @@ int main(int argc, char* argv[])
         }
             else if(cmd == "VIEWCART") {
          string username;
-
-    if(!(ss >> username) || !ds.viewCart(username)) {
-        cout << "Invalid username" << endl;
-    }
-}
+        if(!(ss >> username) || !ds.viewCart(username)) {
+            cout << "Invalid username" << endl;
+            }
+        }    
             else if (cmd == "BUYCART") {
                 string username;
-
-                if(!(ss >> username)) {
+                // Print an error message if the username is invalid or the purchase fails
+                if(!(ss >> username) || !ds.buyCart(username)) {
                     cout << "Invalid username" << endl;
-                }
-                else {
-                    ds.buyCart(username);
                 }
             }
         }

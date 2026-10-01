@@ -170,10 +170,10 @@ bool MyDataStore::viewCart(const string& username) const
     // Get a reference to the user's cart
     const vector<Product*>& cart = cartIt->second;
     // Display the cart products in FIFO order
-    for(size_t i = 0; i < cart.size(); ++i) {
-        // Display an ascending item number and the product information
-        cout << i + 1 << ": "
-             << cart[i]->displayString() << endl;
+    for(std::vector<Product*>::size_type i = 0; i < cart.size(); ++i) {
+        // Display the cart products in FIFO order
+        cout << "Item " << i + 1 << endl;
+        cout << cart[i]->displayString() << endl;
     }
     // Report that the username was valid
     return true;
